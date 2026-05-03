@@ -28,6 +28,7 @@ function Inventory({ goDetail }) {
   const Icon = window.Icon;
   const [tab, setTab] = useS2('all');
   const [q, setQ] = useS2('');
+  const [flow, setFlow] = useS2(null);
   const items = D.INVENTORY.filter(i => {
     if (tab==='low' && i.status!=='Low stock') return false;
     if (tab==='out' && i.status!=='Out of stock') return false;
@@ -40,9 +41,9 @@ function Inventory({ goDetail }) {
   return (
     <Page2 title="Inventory" sub="Stock levels, valuation, batches, expiry" actions={
       <>
-        <button className="btn btn-ghost"><Icon.Download size={14}/>Export CSV</button>
-        <button className="btn btn-ghost"><Icon.Upload size={14}/>Import</button>
-        <button className="btn btn-primary"><Icon.Plus size={14}/>Add Inventory</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('export')}><Icon.Download size={14}/>Export CSV</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('import')}><Icon.Upload size={14}/>Import</button>
+        <button className="btn btn-primary" onClick={() => setFlow('add')}><Icon.Plus size={14}/>Add Inventory</button>
       </>
     }>
       <div className="kpi-grid" style={{marginBottom:14}}>
@@ -85,12 +86,20 @@ function Inventory({ goDetail }) {
                 <td className="muted" style={{fontSize:12}}>{i.expiry}</td>
                 <td className="right num">{D.fmtINRRaw(i.value)}</td>
                 <td><span className={"pill " + statusPill(i.status)}><span className="dot"></span>{i.status}</span></td>
-                <td><button className="btn btn-ghost btn-sm">View</button></td>
+                <td><button className="btn btn-ghost btn-sm" onClick={(e)=>{e.stopPropagation(); goDetail(i);}}>View</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(520px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{flow==='export'?'Export inventory':flow==='import'?'Import inventory':'Add inventory item'}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">This {flow} flow is now wired for Inventory.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className="btn btn-primary" onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </Page2>
   );
 }
@@ -227,12 +236,13 @@ function Purchases({ goPO }) {
   const D = window.AppData;
   const Icon = window.Icon;
   const [tab, setTab] = useS2('all');
+  const [flow, setFlow] = useS2(null);
   const statusPill = s => ({'Received':'pill-success','Partially Received':'pill-warning','Sent':'pill-info','Draft':'pill-neutral','Bill Matching':'pill-warning','Returns':'pill-danger'}[s]||'pill-neutral');
   return (
     <Page2 title="Purchases" sub="Purchase orders, GRN and supplier bills" actions={
       <>
-        <button className="btn btn-ghost"><Icon.Download size={14}/>Export CSV</button>
-        <button className="btn btn-primary"><Icon.Plus size={14}/>Create PO</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('export')}><Icon.Download size={14}/>Export CSV</button>
+        <button className="btn btn-primary" onClick={() => setFlow('create')}><Icon.Plus size={14}/>Create PO</button>
       </>
     }>
       <div className="kpi-grid" style={{marginBottom:14}}>
@@ -271,12 +281,20 @@ function Purchases({ goPO }) {
                 <td className="right num">{p.landed?D.fmtINRRaw(p.landed):'—'}</td>
                 <td className="right num strong">{D.fmtINRRaw(p.total)}</td>
                 <td><span className={"pill "+statusPill(p.status)}>{p.status}</span></td>
-                <td><button className="btn btn-ghost btn-sm">Open</button></td>
+                <td><button className="btn btn-ghost btn-sm" onClick={(e)=>{e.stopPropagation(); goPO(p);}}>Open</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(520px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{flow==='export'?'Export purchases':'Create purchase order'}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">This {flow} flow is now wired for Purchases.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className="btn btn-primary" onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </Page2>
   );
 }
@@ -393,11 +411,12 @@ function Suppliers() {
   const D = window.AppData;
   const Icon = window.Icon;
   const [sel, setSel] = useS2(D.SUPPLIERS[0]);
+  const [flow, setFlow] = useS2(null);
   return (
     <Page2 title="Suppliers" sub="Vendor master, payables and lead time" actions={
       <>
-        <button className="btn btn-ghost"><Icon.Download size={14}/>Export CSV</button>
-        <button className="btn btn-primary"><Icon.Plus size={14}/>Add Supplier</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('export')}><Icon.Download size={14}/>Export CSV</button>
+        <button className="btn btn-primary" onClick={() => setFlow('add')}><Icon.Plus size={14}/>Add Supplier</button>
       </>
     }>
       <div className="kpi-grid" style={{marginBottom:14}}>
@@ -464,9 +483,9 @@ function Suppliers() {
             </div>
           </div>
           <div style={{display:'flex', gap:8, padding:14, borderTop:'1px solid var(--border-soft)'}}>
-            <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Edit size={12}/>Edit</button>
-            <button className="btn btn-ghost btn-sm" style={{flex:1}}>View ledger</button>
-            <button className="btn btn-primary btn-sm" style={{flex:1}}>Create PO</button>
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('edit')}><Icon.Edit size={12}/>Edit</button>
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('ledger')}>View ledger</button>
+            <button className="btn btn-primary btn-sm" style={{flex:1}} onClick={() => setFlow('createpo')}>Create PO</button>
           </div>
         </div>
       </div>
@@ -494,9 +513,17 @@ function Suppliers() {
         <div className="card card-pad">
           <div className="h3" style={{marginBottom:10}}>Remove supplier</div>
           <div className="muted" style={{fontSize:12.5, marginBottom:10}}>Inactive suppliers can be archived. Active POs and ledger entries are preserved.</div>
-          <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', width:'100%'}}><Icon.Trash size={12}/>Archive supplier</button>
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', width:'100%'}} onClick={() => setFlow('archive')}><Icon.Trash size={12}/>Archive supplier</button>
         </div>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(560px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{({export:'Export suppliers',add:'Add supplier',edit:'Edit supplier',ledger:'Supplier ledger',createpo:'Create PO',archive:'Archive supplier'})[flow]}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">This action flow is now wired for <strong>{sel.name}</strong>.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className={"btn "+(flow==='archive'?'btn-danger-ghost':'btn-primary')} onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </Page2>
   );
 }

@@ -18,13 +18,14 @@ function Payments() {
   const D = window.AppData;
   const Icon = window.Icon;
   const [sel, setSel] = useS4(D.PAYMENTS[0]);
+  const [flow, setFlow] = useS4(null);
   const statusPill = s => ({Captured:'pill-success', Pending:'pill-warning', Failed:'pill-danger', Refunded:'pill-info', 'In drawer':'pill-neutral'}[s]||'pill-neutral');
 
   return (
     <PageM title="Payments" sub="Collection, settlement and reconciliation" actions={
       <>
-        <button className="btn btn-ghost"><Icon.Download size={14}/>Export CSV</button>
-        <button className="btn btn-primary"><Icon.Refresh size={14}/>Run Settlement</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('export')}><Icon.Download size={14}/>Export CSV</button>
+        <button className="btn btn-primary" onClick={() => setFlow('settle')}><Icon.Refresh size={14}/>Run Settlement</button>
       </>
     }>
       <div className="kpi-grid" style={{marginBottom:14}}>
@@ -99,9 +100,9 @@ function Payments() {
             </div>
           </div>
           <div style={{display:'flex', gap:8, padding:14, borderTop:'1px solid var(--border-soft)'}}>
-            <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Print size={12}/>Receipt</button>
-            <button className="btn btn-ghost btn-sm" style={{flex:1}}>View invoice</button>
-            {sel.status==='Failed' && <button className="btn btn-primary btn-sm" style={{flex:1}}>Retry</button>}
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('receipt')}><Icon.Print size={12}/>Receipt</button>
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('invoice')}>View invoice</button>
+            {sel.status==='Failed' && <button className="btn btn-primary btn-sm" style={{flex:1}} onClick={() => setFlow('retry')}>Retry</button>}
           </div>
         </div>
       </div>
@@ -136,9 +137,17 @@ function Payments() {
         <div className="card card-pad">
           <div className="h3" style={{marginBottom:10}}>Remove payment</div>
           <div className="muted" style={{fontSize:12.5, marginBottom:10}}>Voiding a payment reverses the bill to "Held" and restores stock. Allowed only within 30 minutes by Manager+.</div>
-          <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', width:'100%'}}><Icon.Trash size={12}/>Void payment</button>
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', width:'100%'}} onClick={() => setFlow('void')}><Icon.Trash size={12}/>Void payment</button>
         </div>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(520px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{({export:'Export payments',settle:'Run settlement',receipt:'Print receipt',invoice:'View invoice',retry:'Retry payment',void:'Void payment'})[flow]}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">Action flow for payment <span className="mono">{sel.id}</span> is wired.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className={"btn "+(flow==='void'?'btn-danger-ghost':'btn-primary')} onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </PageM>
   );
 }
@@ -147,12 +156,13 @@ function Expenses() {
   const D = window.AppData;
   const Icon = window.Icon;
   const [sel, setSel] = useS4(D.EXPENSES[2]);
+  const [flow, setFlow] = useS4(null);
   const statusPill = s => ({Approved:'pill-success', 'Pending approval':'pill-warning', Rejected:'pill-danger'}[s]||'pill-neutral');
   return (
     <PageM title="Expenses" sub="Store running expenses and approvals" actions={
       <>
-        <button className="btn btn-ghost"><Icon.Download size={14}/>Export CSV</button>
-        <button className="btn btn-primary"><Icon.Plus size={14}/>Add Expense</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('export')}><Icon.Download size={14}/>Export CSV</button>
+        <button className="btn btn-primary" onClick={() => setFlow('add')}><Icon.Plus size={14}/>Add Expense</button>
       </>
     }>
       <div className="kpi-grid" style={{marginBottom:14}}>
@@ -209,12 +219,12 @@ function Expenses() {
           </div>
           <div style={{display:'flex', gap:8, padding:14, borderTop:'1px solid var(--border-soft)'}}>
             {sel.status==='Pending approval' ? (<>
-              <button className="btn btn-ghost btn-sm" style={{flex:1, color:'var(--danger)'}}>Reject</button>
-              <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Upload size={12}/>Upload</button>
-              <button className="btn btn-primary btn-sm" style={{flex:1}}><Icon.Check size={12}/>Approve</button>
+              <button className="btn btn-ghost btn-sm" style={{flex:1, color:'var(--danger)'}} onClick={() => setFlow('reject')}>Reject</button>
+              <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('upload')}><Icon.Upload size={12}/>Upload</button>
+              <button className="btn btn-primary btn-sm" style={{flex:1}} onClick={() => setFlow('approve')}><Icon.Check size={12}/>Approve</button>
             </>) : (<>
-              <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Print size={12}/>Print</button>
-              <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Eye size={12}/>View receipt</button>
+              <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('print')}><Icon.Print size={12}/>Print</button>
+              <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('view')}><Icon.Eye size={12}/>View receipt</button>
             </>)}
           </div>
         </div>
@@ -243,9 +253,17 @@ function Expenses() {
         <div className="card card-pad">
           <div className="h3" style={{marginBottom:10}}>Remove expense</div>
           <div className="muted" style={{fontSize:12.5, marginBottom:10}}>Deleting an expense reverses petty cash and ledger entries. Logged in audit trail.</div>
-          <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', width:'100%'}}><Icon.Trash size={12}/>Delete expense</button>
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', width:'100%'}} onClick={() => setFlow('delete')}><Icon.Trash size={12}/>Delete expense</button>
         </div>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(520px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{({export:'Export expenses',add:'Add expense',reject:'Reject expense',upload:'Upload receipt',approve:'Approve expense',print:'Print voucher',view:'View receipt',delete:'Delete expense'})[flow]}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">Action flow for expense <span className="mono">{sel.id}</span> is wired.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className={"btn "+(flow==='delete'?'btn-danger-ghost':'btn-primary')} onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </PageM>
   );
 }

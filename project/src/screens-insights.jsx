@@ -17,12 +17,13 @@ function Reports() {
   const Icon = window.Icon;
   const [sel, setSel] = useS5(D.REPORTS[0]);
   const [range, setRange] = useS5('7d');
+  const [flow, setFlow] = useS5(null);
   const trends = {today:{s:'₹4.84 L',b:'342',g:'₹62 K',r:'₹18.4 K',e:'₹1.32 L',x:'12'},'7d':{s:'₹32.4 L',b:'2,418',g:'₹4.2 L',r:'₹98 K',e:'₹6.8 L',x:'74'},'30d':{s:'₹1.42 Cr',b:'10,184',g:'₹18.6 L',r:'₹3.4 L',e:'₹28.4 L',x:'310'},month:{s:'₹84 L',b:'5,920',g:'₹11.2 L',r:'₹2.1 L',e:'₹17.6 L',x:'182'},custom:{s:'—',b:'—',g:'—',r:'—',e:'—',x:'—'}}[range];
   return (
     <PageI title="Reports" sub="Audit-ready, GST-compliant exports" actions={
       <>
-        <button className="btn btn-ghost"><Icon.Calendar size={14}/>Schedule</button>
-        <button className="btn btn-primary"><Icon.Download size={14}/>Generate Report</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('schedule')}><Icon.Calendar size={14}/>Schedule</button>
+        <button className="btn btn-primary" onClick={() => setFlow('generate')}><Icon.Download size={14}/>Generate Report</button>
       </>
     }>
       <div className="kpi-grid" style={{marginBottom:14}}>
@@ -72,7 +73,7 @@ function Reports() {
                   <td className="muted">{r.purpose}</td>
                   <td className="muted">{r.updated}</td>
                   <td>{r.owner}</td>
-                  <td><button className="btn btn-ghost btn-sm">Open</button></td>
+                  <td><button className="btn btn-ghost btn-sm" onClick={(e)=>{e.stopPropagation(); setSel(r); setFlow('open');}}>Open</button></td>
                 </tr>
               ))}
             </tbody>
@@ -99,9 +100,9 @@ function Reports() {
             </div>
           </div>
           <div style={{display:'flex', gap:8, padding:14, borderTop:'1px solid var(--border-soft)'}}>
-            <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Download size={12}/>PDF</button>
-            <button className="btn btn-ghost btn-sm" style={{flex:1}}><Icon.Download size={12}/>XLSX</button>
-            <button className="btn btn-primary btn-sm" style={{flex:1}}><Icon.Mail size={12}/>Email</button>
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('pdf')}><Icon.Download size={12}/>PDF</button>
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setFlow('xlsx')}><Icon.Download size={12}/>XLSX</button>
+            <button className="btn btn-primary btn-sm" style={{flex:1}} onClick={() => setFlow('email')}><Icon.Mail size={12}/>Email</button>
           </div>
         </div>
       </div>
@@ -126,6 +127,14 @@ function Reports() {
           </div>
         </div>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(540px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{({schedule:'Schedule report',generate:'Generate report',open:'Open report',pdf:'Download PDF',xlsx:'Download XLSX',email:'Email report'})[flow]}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">Flow wired for <strong>{sel.name}</strong>.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className="btn btn-primary" onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </PageI>
   );
 }

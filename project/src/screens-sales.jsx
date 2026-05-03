@@ -443,6 +443,7 @@ function SalesOrders() {
   const Icon = window.Icon;
   const [sel, setSel] = useS1(D.RECENT_BILLS[0]);
   const [tab, setTab] = useS1('today');
+  const [flow, setFlow] = useS1(null);
 
   const statusPill = (s) => ({
     Paid: 'pill-success', Held: 'pill-warning', Cancelled: 'pill-danger', Refunded: 'pill-info'
@@ -451,9 +452,9 @@ function SalesOrders() {
   return (
     <Page title="Sales / Orders" sub="Invoice and held bill history" actions={
     <>
-        <button className="btn btn-ghost"><Icon.Filter size={14} />Filters</button>
-        <button className="btn btn-ghost"><Icon.Download size={14} />Export</button>
-        <button className="btn btn-primary"><Icon.Plus size={14} />New Bill</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('filters')}><Icon.Filter size={14} />Filters</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('export')}><Icon.Download size={14} />Export</button>
+        <button className="btn btn-primary" onClick={() => setFlow('new')}><Icon.Plus size={14} />New Bill</button>
       </>
     }>
       <div className="kpi-grid cols-4" style={{ marginBottom: 14 }}>
@@ -502,7 +503,7 @@ function SalesOrders() {
                   <td>{b.method}</td>
                   <td><span className={"pill " + statusPill(b.status)}>{b.status}</span></td>
                   <td className="right num strong">{D.fmtINRRaw(b.amount)}</td>
-                  <td><button className="btn btn-ghost btn-sm"><Icon.Eye size={12} />View</button></td>
+                  <td><button className="btn btn-ghost btn-sm" onClick={(e)=>{e.stopPropagation(); setSel(b); setFlow('view');}}><Icon.Eye size={12} />View</button></td>
                 </tr>
               )}
             </tbody>
@@ -556,10 +557,10 @@ function SalesOrders() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, padding: 14, borderTop: '1px solid var(--border-soft)', flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost btn-sm"><Icon.Print size={12} />Reprint</button>
-            <button className="btn btn-ghost btn-sm"><Icon.Mail size={12} />Email</button>
-            {sel.status === 'Held' && <button className="btn btn-primary btn-sm">Resume</button>}
-            {sel.status === 'Paid' && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}><Icon.Return size={12} />Refund</button>}
+            <button className="btn btn-ghost btn-sm" onClick={() => setFlow('reprint')}><Icon.Print size={12} />Reprint</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setFlow('email')}><Icon.Mail size={12} />Email</button>
+            {sel.status === 'Held' && <button className="btn btn-primary btn-sm" onClick={() => setFlow('resume')}>Resume</button>}
+            {sel.status === 'Paid' && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setFlow('refund')}><Icon.Return size={12} />Refund</button>}
           </div>
         </div>
       </div>
@@ -602,6 +603,14 @@ function SalesOrders() {
           </div>
         </div>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(520px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{({filters:'Order filters',export:'Export sales/orders',new:'Create new bill',view:'View invoice',reprint:'Reprint invoice',email:'Email invoice',resume:'Resume held bill',refund:'Initiate refund'})[flow]}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">Flow wired for invoice <span className="mono">{sel.id}</span>.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className={"btn "+(flow==='refund'?'btn-danger-ghost':'btn-primary')} onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </Page>);
 
 }
@@ -611,11 +620,114 @@ function Register() {
   const D = window.AppData;
   const Icon = window.Icon;
   const [sel, setSel] = useS1(D.REGISTERS[0]);
+  const [flow, setFlow] = useS1('main');
+  const [tab, setTab] = useS1('today');
+  const [counterFilter, setCounterFilter] = useS1('all');
+  const [cashierFilter, setCashierFilter] = useS1('all');
+
+  const filteredRows = D.REGISTERS.filter((r) => {
+    if (counterFilter !== 'all' && r.counter !== counterFilter) return false;
+    if (cashierFilter !== 'all' && r.cashier !== cashierFilter) return false;
+    if (tab === 'mismatch' && r.variance === 0) return false;
+    if (tab === 'open' && r.status !== 'Open') return false;
+    if (tab === 'cashier' && r.cashier !== sel.cashier) return false;
+    return true;
+  });
+
+  if (flow !== 'main') {
+    const titleMap = {
+      cashio: 'Cash In / Out',
+      open: 'Open Register',
+      reason: 'Variance Reason & Approval',
+      drop: 'Cash Drop',
+      close: 'Close Register',
+      zreport: 'Print Z-Report',
+      reopen: 'Reopen Register',
+    };
+    return (
+      <Page
+        title={titleMap[flow]}
+        sub={`${sel.id} · ${sel.counter} · ${sel.cashier}`}
+        actions={<button className="btn btn-ghost" onClick={() => setFlow('main')}><Icon.ArrowLeft size={14} />Back to Register</button>}
+      >
+        <div className="card card-pad-lg" style={{maxWidth:760}}>
+          {flow === 'cashio' && (
+            <div className="grid">
+              <div className="h3">Record cash movement</div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                <div className="field"><label>Type</label><select><option>Cash out</option><option>Cash in</option></select></div>
+                <div className="field"><label>Amount</label><input className="num" placeholder="₹0"/></div>
+                <div className="field"><label>Category</label><select><option>Petty cash</option><option>Bank deposit</option><option>Correction</option></select></div>
+                <div className="field"><label>Reference</label><input placeholder="Optional note"/></div>
+              </div>
+              <div className="row-between"><span className="pill pill-info">Register: {sel.id}</span><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Check size={13}/>Save entry</button></div>
+            </div>
+          )}
+          {flow === 'open' && (
+            <div className="grid">
+              <div className="h3">Open a new register session</div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                <div className="field"><label>Counter</label><select><option>Counter 1</option><option>Counter 2</option><option>Counter 3</option></select></div>
+                <div className="field"><label>Cashier</label><select><option>Riya Sharma</option><option>Aarav Pillai</option><option>Meera Desai</option></select></div>
+                <div className="field"><label>Opening float</label><input className="num" defaultValue="₹5,000"/></div>
+              </div>
+              <div style={{display:'flex', justifyContent:'flex-end'}}><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Drawer size={13}/>Open register</button></div>
+            </div>
+          )}
+          {flow === 'reason' && (
+            <div className="grid">
+              <div className="h3">Submit variance reason</div>
+              <div className="field"><label>Variance</label><input className="num" value={D.fmtINRRaw(sel.variance)} readOnly/></div>
+              <div className="field"><label>Reason</label><textarea placeholder="Describe short/excess cash reason"/></div>
+              <div className="field"><label>Approval note</label><textarea placeholder="Add manager context if required"/></div>
+              <div style={{display:'flex', justifyContent:'flex-end'}}><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Mail size={13}/>Request approval</button></div>
+            </div>
+          )}
+          {flow === 'drop' && (
+            <div className="grid">
+              <div className="h3">Cash drop</div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                <div className="field"><label>Drop amount</label><input className="num" placeholder="₹0"/></div>
+                <div className="field"><label>Destination</label><select><option>Back office safe</option><option>Bank bag</option></select></div>
+              </div>
+              <div style={{display:'flex', justifyContent:'flex-end'}}><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Check size={13}/>Confirm drop</button></div>
+            </div>
+          )}
+          {flow === 'close' && (
+            <div className="grid">
+              <div className="h3">Close register</div>
+              <div style={{display:'grid', gap:8, fontSize:13}}>
+                <div className="row-between"><span className="muted">Expected</span><span className="num strong">{D.fmtINRRaw(sel.expected)}</span></div>
+                <div className="row-between"><span className="muted">Counted</span><span className="num strong">{D.fmtINRRaw(sel.actual)}</span></div>
+              </div>
+              <div className="field"><label>Closing note</label><textarea placeholder="Any exceptions during this shift"/></div>
+              <div style={{display:'flex', justifyContent:'flex-end'}}><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Check size={13}/>Close now</button></div>
+            </div>
+          )}
+          {flow === 'zreport' && (
+            <div className="grid">
+              <div className="h3">Print Z-report</div>
+              <div className="field"><label>Template</label><select><option>Detailed</option><option>Summary</option></select></div>
+              <div className="row-between"><span className="pill pill-success"><span className="dot"></span>Printer online</span><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Print size={13}/>Print</button></div>
+            </div>
+          )}
+          {flow === 'reopen' && (
+            <div className="grid">
+              <div className="h3">Reopen closed register</div>
+              <div className="field"><label>Reason</label><textarea placeholder="Why this register needs to be reopened"/></div>
+              <div className="row-between"><span className="pill pill-warning">Manager approval required</span><button className="btn btn-primary" onClick={() => setFlow('main')}><Icon.Refresh size={13}/>Reopen request</button></div>
+            </div>
+          )}
+        </div>
+      </Page>
+    );
+  }
+
   return (
     <Page title="Register / Cash Drawer" sub="Cashier shifts and cash reconciliation" actions={
     <>
-        <button className="btn btn-ghost"><Icon.Plus size={14} />Cash in / out</button>
-        <button className="btn btn-primary"><Icon.Drawer size={14} />Open Register</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('cashio')}><Icon.Plus size={14} />Cash in / out</button>
+        <button className="btn btn-primary" onClick={() => setFlow('open')}><Icon.Drawer size={14} />Open Register</button>
       </>
     }>
       <div className="kpi-grid cols-4" style={{ marginBottom: 14 }}>
@@ -627,14 +739,18 @@ function Register() {
 
       <div className="row-between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div className="tabs">
-          <div className="tab active">Today</div>
-          <div className="tab">This week</div>
-          <div className="tab">By cashier</div>
-          <div className="tab">Mismatches</div>
+          <div className={"tab " + (tab === 'today' ? 'active' : '')} onClick={() => setTab('today')}>Today</div>
+          <div className={"tab " + (tab === 'open' ? 'active' : '')} onClick={() => setTab('open')}>Open</div>
+          <div className={"tab " + (tab === 'cashier' ? 'active' : '')} onClick={() => setTab('cashier')}>By cashier</div>
+          <div className={"tab " + (tab === 'mismatch' ? 'active' : '')} onClick={() => setTab('mismatch')}>Mismatches</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <select className="btn btn-ghost"><option>All counters</option><option>C-1</option><option>C-2</option><option>C-3</option></select>
-          <select className="btn btn-ghost"><option>All cashiers</option></select>
+          <select className="btn btn-ghost" value={counterFilter} onChange={(e) => setCounterFilter(e.target.value)}>
+            <option value="all">All counters</option><option value="Counter 1">Counter 1</option><option value="Counter 2">Counter 2</option><option value="Counter 3">Counter 3</option>
+          </select>
+          <select className="btn btn-ghost" value={cashierFilter} onChange={(e) => setCashierFilter(e.target.value)}>
+            <option value="all">All cashiers</option><option value="Riya Sharma">Riya Sharma</option><option value="Aarav Pillai">Aarav Pillai</option><option value="Meera Desai">Meera Desai</option><option value="Suresh Kumar">Suresh Kumar</option>
+          </select>
         </div>
       </div>
 
@@ -643,7 +759,7 @@ function Register() {
           <table>
             <thead><tr><th>Register</th><th>Counter</th><th>Cashier</th><th>Shift</th><th className="right">Opening</th><th className="right">Expected</th><th className="right">Actual</th><th>Variance</th><th>Status</th></tr></thead>
             <tbody>
-              {D.REGISTERS.map((r) =>
+              {filteredRows.map((r) =>
               <tr key={r.id} className={sel.id === r.id ? 'selected' : ''} onClick={() => setSel(r)} style={{ cursor: 'pointer' }}>
                   <td className="mono">{r.id}</td>
                   <td className="strong">{r.counter}</td>
@@ -689,7 +805,7 @@ function Register() {
             <div style={{ padding: 12, background: 'var(--warning-soft)', borderRadius: 8, fontSize: 12 }}>
                 <div className="strong" style={{ color: '#B45309', marginBottom: 4 }}>Variance reason required</div>
                 <div className="muted">Manager approval pending. Suggested: short change, dropped note, missed receipt.</div>
-                <button className="btn btn-soft btn-sm" style={{ marginTop: 8 }}>Add reason & request approval</button>
+                <button className="btn btn-soft btn-sm" style={{ marginTop: 8 }} onClick={() => setFlow('reason')}>Add reason & request approval</button>
               </div>
             }
             <div className="divider"></div>
@@ -703,11 +819,11 @@ function Register() {
           </div>
           <div style={{ display: 'flex', gap: 8, padding: 14, borderTop: '1px solid var(--border-soft)' }}>
             {sel.status === 'Open' ? <>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}>Cash drop</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }}>Close register</button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => setFlow('drop')}>Cash drop</button>
+              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setFlow('close')}>Close register</button>
             </> : <>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}><Icon.Print size={12} />Print Z-report</button>
-              <button className="btn btn-soft btn-sm" style={{ flex: 1 }}>Reopen</button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => setFlow('zreport')}><Icon.Print size={12} />Print Z-report</button>
+              <button className="btn btn-soft btn-sm" style={{ flex: 1 }} onClick={() => setFlow('reopen')}>Reopen</button>
             </>}
           </div>
         </div>
@@ -721,6 +837,7 @@ function Returns() {
   const D = window.AppData;
   const Icon = window.Icon;
   const [sel, setSel] = useS1(D.RETURNS[1]);
+  const [flow, setFlow] = useS1(null);
 
   const statusPill = (s) => ({
     Approved: 'pill-success', 'Pending approval': 'pill-warning', Rejected: 'pill-danger'
@@ -729,8 +846,8 @@ function Returns() {
   return (
     <Page title="Returns & Refunds" sub="Customer returns, refunds and stock reversal" actions={
     <>
-        <button className="btn btn-ghost"><Icon.Filter size={14} />Filters</button>
-        <button className="btn btn-primary"><Icon.Plus size={14} />New Return</button>
+        <button className="btn btn-ghost" onClick={() => setFlow('filters')}><Icon.Filter size={14} />Filters</button>
+        <button className="btn btn-primary" onClick={() => setFlow('new')}><Icon.Plus size={14} />New Return</button>
       </>
     }>
       <div className="kpi-grid cols-4" style={{ marginBottom: 14 }}>
@@ -748,7 +865,7 @@ function Returns() {
           <div className="tab">Rejected</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost btn-sm"><Icon.Search size={13} />Search invoice</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setFlow('search')}><Icon.Search size={13} />Search invoice</button>
           <select className="btn btn-ghost"><option>All cashiers</option></select>
           <select className="btn btn-ghost"><option>All reasons</option></select>
         </div>
@@ -824,15 +941,23 @@ function Returns() {
           </div>
           <div style={{ display: 'flex', gap: 8, padding: 14, borderTop: '1px solid var(--border-soft)' }}>
             {sel.status === 'Pending approval' ? <>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1, color: 'var(--danger)' }}>Reject</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }}>Approve refund</button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1, color: 'var(--danger)' }} onClick={() => setFlow('reject')}>Reject</button>
+              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setFlow('approve')}>Approve refund</button>
             </> : <>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}><Icon.Print size={12} />Print credit note</button>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}><Icon.Eye size={12} />View invoice</button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => setFlow('print')}><Icon.Print size={12} />Print credit note</button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => setFlow('view')}><Icon.Eye size={12} />View invoice</button>
             </>}
           </div>
         </div>
       </div>
+      {flow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,41,.38)', zIndex:40, display:'grid', placeItems:'center', padding:20 }}>
+          <div className="card" style={{ width:'min(520px, 100%)', borderRadius:14, overflow:'hidden' }}>
+            <div className="card-head"><h3>{({filters:'Return filters',new:'Create return',search:'Search invoice',reject:'Reject return',approve:'Approve refund',print:'Print credit note',view:'View invoice'})[flow]}</h3><button className="icon-btn" onClick={()=>setFlow(null)}><Icon.X size={14}/></button></div>
+            <div className="card-pad-lg"><div className="muted">Flow wired for return <span className="mono">{sel.id}</span>.</div><div style={{display:'flex', justifyContent:'flex-end', marginTop:12}}><button className={"btn "+(flow==='reject'?'btn-danger-ghost':'btn-primary')} onClick={()=>setFlow(null)}>Continue</button></div></div>
+          </div>
+        </div>
+      )}
     </Page>);
 
 }
